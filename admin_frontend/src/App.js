@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
 import Header from './components/Header';
-import VideoPanel from './components/VideoPanel';
 import SegmentedControl from './components/SegmentedControl';
 import AnalyticsPanel from './components/AnalyticsPanel';
 import EmojiManager from './components/EmojiManager';
@@ -32,8 +31,12 @@ export default function App() {
     <div className="page">
       <Header onToggleTheme={toggleTheme} theme={theme} />
       <main className="main" role="main">
-        <VideoPanel />
-        <aside className="card" aria-label="Admin side panel">
+        {/* Single main card spanning full content area with segmented control */}
+        <section
+          className="card"
+          aria-label="Admin dashboard"
+          style={{ gridColumn: '1 / -1' }} // ensure full-width within existing grid layout
+        >
           <div className="panel-header">
             <SegmentedControl
               options={[
@@ -47,7 +50,7 @@ export default function App() {
           </div>
 
           {panel === 'analytics' ? <AnalyticsPanel /> : <EmojiManager />}
-        </aside>
+        </section>
       </main>
     </div>
   );
