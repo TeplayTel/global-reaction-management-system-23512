@@ -8,9 +8,17 @@ const IS_MOCK = !BASE_URL;
 
 // PUBLIC_INTERFACE
 export async function getEmojis() {
-  /** Fetch current emoji list from backend or return mock data. */
+  /** Fetch current emoji list from backend or return mock data.
+   * Returns a heterogeneous list that can contain:
+   * - plain Unicode emoji strings
+   * - uploaded image emoji objects: { emojiId, emojiType, imageUrl }
+   */
   if (IS_MOCK) {
-    return mockState.emojis.slice();
+    // Merge text and image-based emojis for the mock
+    return [
+      ...mockState.emojis.slice(),
+      ...mockState.emojiImages.map(obj => ({ ...obj })),
+    ];
   }
   const res = await safeFetch(`${BASE_URL}/emojis`);
   return res;
@@ -25,7 +33,11 @@ export async function addEmoji(emoji) {
       mockState.emojis.push(emoji);
       notify();
     }
-    return mockState.emojis.slice();
+    // Return combined for consistency with getEmojis
+    return [
+      ...mockState.emojis.slice(),
+      ...mockState.emojiImages.map(obj => ({ ...obj })),
+    ];
   }
   const res = await safeFetch(`${BASE_URL}/emojis`, {
     method: 'POST',
@@ -37,11 +49,16 @@ export async function addEmoji(emoji) {
 
 // PUBLIC_INTERFACE
 export async function removeEmoji(emoji) {
-  /** Remove an emoji from the list. */
+  /** Remove a Unicode emoji from the list.
+   * Note: Removing uploaded image emojis is not implemented in the mock.
+   */
   if (IS_MOCK) {
     mockState.emojis = mockState.emojis.filter(e => e !== emoji);
     notify();
-    return mockState.emojis.slice();
+    return [
+      ...mockState.emojis.slice(),
+      ...mockState.emojiImages.map(obj => ({ ...obj })),
+    ];
   }
   const res = await safeFetch(`${BASE_URL}/emojis/${encodeURIComponent(emoji)}`, {
     method: 'DELETE',
@@ -58,6 +75,58 @@ export async function getAnalytics() {
   }
   const res = await safeFetch(`${BASE_URL}/analytics/global`);
   return res;
+}
+
+// PUBLIC_INTERFACE
+export async function uploadEmojiImage(emojiType, emojiImageFile) {
+  /** Upload a new image-based emoji using multipart/form-data.
+   * Expects:
+   * - emojiType: string (e.g., "fire")
+   * - emojiImageFile: File (image/*)
+   * When BASE_URL is not set (mock mode), the image is stored in memory
+   * and an object URL is generated for preview.
+   */
+  if (!emojiType) throw new Error('emojiType is required.');
+  if (!emojiImageFile) throw new Error('emojiImage (file) is required.');
+
+  if (IS_MOCK) {
+    // Create a mock emoji object and add to mock state
+    const id = `EMJ${Math.floor(100 + Math.random() * 900)}`;
+    const imageUrl = URL.createObjectURL(emojiImageFile);
+    const newObj = { emojiId: id, emojiType, imageUrl };
+    mockState.emojiImages.push(newObj);
+    notify();
+    return {
+      status: 'SUCCESS',
+      message: 'Emoji uploaded successfully (mock)',
+      data: newObj,
+    };
+  }
+
+  const fd = new FormData();
+  fd.append('emojiType', emojiType);
+  fd.append('emojiImage', emojiImageFile);
+
+  const headers = {};
+  // Do NOT set Content-Type explicitly so the browser sets boundary correctly.
+  const adminToken = process.env.REACT_APP_ADMIN_TOKEN;
+  if (adminToken) {
+    headers['Authorization'] = `Bearer ${adminToken}`;
+  }
+
+  try {
+    const r = await fetch(`${BASE_URL}/fan-engagement/emoji/v1/upload`, {
+      method: 'POST',
+      headers,
+      body: fd,
+    });
+    if (!r.ok) throw new Error(`Request failed: ${r.status}`);
+    const data = await r.json().catch(() => ({}));
+    return data;
+  } catch (err) {
+    console.warn('Upload emoji image failed:', err?.message || err);
+    throw err;
+  }
 }
 
 async function safeFetch(url, options) {
@@ -80,6 +149,8 @@ async function safeFetch(url, options) {
 /** Mock state and helpers */
 let mockState = {
   emojis: ['❤️', '👏', '😂', '😮', '🔥', '⭐'],
+  // Image-based emojis uploaded via mock upload
+  emojiImages: [],
   stats: [
     { label: 'Positive', teamRed: 62, teamBlue: 38 },
     { label: 'Excited', teamRed: 54, teamBlue: 46 },
