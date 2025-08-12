@@ -1,1 +1,3 @@
-# global-reaction-management-system-23512
+# Project Repository
+
+This is the initial README file for the project.
