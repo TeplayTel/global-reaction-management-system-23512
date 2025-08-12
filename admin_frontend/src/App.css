@@ -539,39 +539,6 @@ html, body, #root {
 }
 .input::placeholder { color: var(--text-muted); }
 
-/* Login */
-.login-container {
-  min-height: 100dvh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-}
-
-.login-card {
-  width: 100%;
-  max-width: 420px;
-  background: var(--bg-elev-1);
-  border: 1px solid var(--stroke-soft);
-  border-radius: var(--radius-card);
-  padding: 20px;
-  box-shadow: 0 10px 24px rgba(0,0,0,0.35);
-}
-.login-card h2 {
-  margin: 0 0 8px 0;
-  font-size: 18px;
-}
-.login-card p {
-  margin: 0 0 16px 0;
-  color: var(--text-secondary);
-}
-.login-card .actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 12px;
-}
-
 /* Accessibility */
 :focus-visible {
   outline: 3px solid var(--focus-ring);
