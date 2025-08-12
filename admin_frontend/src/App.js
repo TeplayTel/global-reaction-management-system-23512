@@ -9,7 +9,7 @@ import EmojiManager from './components/EmojiManager';
 export default function App() {
   /** Admin dashboard app entrypoint without authentication. Renders the dashboard with analytics and emoji management. */
   const [theme, setTheme] = useState('dark');
-  const [panel, setPanel] = useState('analytics'); // 'analytics' | 'emojis'
+  const [panel, setPanel] = useState('emojis'); // 'analytics' | 'emojis'
 
   useEffect(() => {
     const storedTheme = (localStorage.getItem('admin_theme') || process.env.REACT_APP_THEME || 'dark');
@@ -40,8 +40,8 @@ export default function App() {
           <div className="panel-header">
             <SegmentedControl
               options={[
-                { id: 'analytics', label: 'Analytics' },
                 { id: 'emojis', label: 'Emojis' },
+                { id: 'analytics', label: 'Analytics' },
               ]}
               value={panel}
               onChange={setPanel}
