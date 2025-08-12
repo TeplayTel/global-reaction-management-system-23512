@@ -541,3 +541,49 @@ html, body, #root {
   white-space: nowrap !important;
   border: 0 !important;
 }
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-veil);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.modal {
+  background: var(--bg-elev-1);
+  border: 1px solid var(--stroke-soft);
+  border-radius: var(--radius-card);
+  width: 100%;
+  max-width: 460px;
+  padding: 16px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.45);
+}
+
+.modal-header {
+  margin-bottom: 10px;
+}
+
+.modal-title {
+  margin: 0 0 6px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.modal-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 12px 0;
+}
+
+.modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}

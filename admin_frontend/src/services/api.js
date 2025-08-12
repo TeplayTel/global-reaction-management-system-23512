@@ -47,7 +47,7 @@ export async function addEmoji(emoji) {
   return res;
 }
 
-// PUBLIC_INTERFACE
+ // PUBLIC_INTERFACE
 export async function removeEmoji(emoji) {
   /** Remove a Unicode emoji from the list.
    * Note: Removing uploaded image emojis is not implemented in the mock.
@@ -61,6 +61,51 @@ export async function removeEmoji(emoji) {
     ];
   }
   const res = await safeFetch(`${BASE_URL}/emojis/${encodeURIComponent(emoji)}`, {
+    method: 'DELETE',
+  });
+  return res;
+}
+
+// PUBLIC_INTERFACE
+export async function removeEmojiImage(emojiIdOrUrl) {
+  /** Remove an uploaded image-based emoji from the list.
+   * When BASE_URL is not set (mock mode), this removes from in-memory store by matching:
+   * - emojiId OR
+   * - imageUrl OR
+   * - a composed id in the form "type:<emojiType>:<imageUrl>"
+   * Returns the unified list combining text and image emojis, for consistency with getEmojis().
+   */
+  if (!emojiIdOrUrl) throw new Error('emojiIdOrUrl is required.');
+  if (IS_MOCK) {
+    const input = String(emojiIdOrUrl);
+    let targetUrl = null;
+    let targetId = null;
+    if (input.startsWith('type:')) {
+      // Extract the URL part after the last colon
+      const lastColon = input.lastIndexOf(':');
+      if (lastColon > -1) {
+        targetUrl = input.slice(lastColon + 1);
+      }
+    } else if (input.startsWith('http://') || input.startsWith('https://') || input.startsWith('blob:')) {
+      targetUrl = input;
+    } else {
+      targetId = input;
+    }
+
+    mockState.emojiImages = mockState.emojiImages.filter(obj => {
+      if (targetId && obj.emojiId === targetId) return false;
+      if (targetUrl && obj.imageUrl === targetUrl) return false;
+      return true;
+    });
+    notify();
+    return [
+      ...mockState.emojis.slice(),
+      ...mockState.emojiImages.map(obj => ({ ...obj })),
+    ];
+  }
+
+  // Best-effort backend endpoint guess; adjust according to backend API spec when available.
+  const res = await safeFetch(`${BASE_URL}/fan-engagement/emoji/v1/${encodeURIComponent(emojiIdOrUrl)}`, {
     method: 'DELETE',
   });
   return res;

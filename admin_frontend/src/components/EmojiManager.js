@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { addEmoji, getEmojis, removeEmoji, uploadEmojiImage } from '../services/api';
+import { addEmoji, getEmojis, removeEmoji, uploadEmojiImage, removeEmojiImage } from '../services/api';
 
 /**
  * PUBLIC_INTERFACE
  * EmojiManager allows admins to add or remove emojis that appear in the user app.
  * Enhanced to support uploading image-based emojis with multipart/form-data.
- * Renders a detailed card/grid layout, per-emoji usage stat, removal confirmation for text emojis,
- * and upload form for new image emojis.
+ * Renders a detailed card/grid layout, per-emoji usage stat, and a global confirmation modal
+ * when removing any emoji (Unicode or image-based).
  * @returns {JSX.Element}
  */
 export default function EmojiManager() {
@@ -18,9 +18,12 @@ export default function EmojiManager() {
   const [busy, setBusy] = useState(false); // add/remove busy
   const [uploadBusy, setUploadBusy] = useState(false);
   const [error, setError] = useState('');
-  const [confirmTarget, setConfirmTarget] = useState(null); // store entry id
   const [counts, setCounts] = useState({}); // per-emoji usage count (frontend simulated)
-  const confirmRef = useRef(null);
+
+  // Confirmation modal state
+  const [confirmEntry, setConfirmEntry] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const confirmCancelRef = useRef(null);
 
   // Upload form state
   const [uploadType, setUploadType] = useState('');
@@ -129,20 +132,29 @@ export default function EmojiManager() {
     }
   };
 
-  const onRemove = async (entry) => {
-    if (!entry || entry.kind !== 'text') return;
+  const onConfirmRemove = async () => {
+    if (!confirmEntry) return;
     setBusy(true);
     setError('');
     try {
-      const updated = await removeEmoji(entry.char);
-      const normalized = normalizeList(updated);
-      setEmojis(normalized);
-      ensureCounts(normalized);
+      if (confirmEntry.kind === 'text') {
+        const updated = await removeEmoji(confirmEntry.char);
+        const normalized = normalizeList(updated);
+        setEmojis(normalized);
+        ensureCounts(normalized);
+      } else {
+        const key = confirmEntry.emojiId || confirmEntry.imageUrl || confirmEntry.id;
+        const updated = await removeEmojiImage(key);
+        const normalized = normalizeList(updated);
+        setEmojis(normalized);
+        ensureCounts(normalized);
+      }
     } catch (err) {
       setError(err?.message || 'Unable to remove emoji.');
     } finally {
       setBusy(false);
-      setConfirmTarget(null);
+      setModalOpen(false);
+      setConfirmEntry(null);
     }
   };
 
@@ -182,12 +194,29 @@ export default function EmojiManager() {
     return { totalCount: sum, maxCount: max };
   }, [counts, emojis]);
 
-  // Focus confirmation area when it appears
+  // Open confirmation modal for an entry
+  const openConfirmFor = (entry) => {
+    setConfirmEntry(entry);
+    setModalOpen(true);
+  };
+
+  // Accessibility: close modal with Escape key and set focus to Cancel on open
   useEffect(() => {
-    if (confirmTarget && confirmRef.current) {
-      confirmRef.current.focus();
+    const onKey = (ev) => {
+      if (ev.key === 'Escape' && modalOpen && !busy) {
+        setModalOpen(false);
+        setConfirmEntry(null);
+      }
+    };
+    if (modalOpen) {
+      document.addEventListener('keydown', onKey);
+      // slight timeout to ensure element exists
+      setTimeout(() => {
+        if (confirmCancelRef.current) confirmCancelRef.current.focus();
+      }, 0);
     }
-  }, [confirmTarget]);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [modalOpen, busy]);
 
   return (
     <div className="emoji-manager">
@@ -283,7 +312,6 @@ export default function EmojiManager() {
             const usage = counts[entry.id] || 0;
             const pct = totalCount > 0 ? Math.round((usage / totalCount) * 100) : 0;
             const strength = maxCount > 0 ? Math.max(8, Math.round((usage / maxCount) * 100)) : 0;
-            const showingConfirm = confirmTarget === entry.id;
 
             const label = entry.kind === 'text'
               ? `Emoji ${entry.char}`
@@ -333,67 +361,90 @@ export default function EmojiManager() {
                 </div>
 
                 {/* Actions */}
-                {entry.kind === 'text' ? (
-                  !showingConfirm ? (
-                    <div className="emoji-actions">
-                      <button
-                        className="btn danger"
-                        onClick={() => setConfirmTarget(entry.id)}
-                        aria-controls={`confirm-${encodeURIComponent(entry.id)}`}
-                        aria-expanded="false"
-                        disabled={busy || uploadBusy}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      id={`confirm-${encodeURIComponent(entry.id)}`}
-                      className="emoji-confirm"
-                      role="alertdialog"
-                      aria-labelledby={`confirm-title-${encodeURIComponent(entry.id)}`}
-                      aria-describedby={`confirm-desc-${encodeURIComponent(entry.id)}`}
-                      tabIndex={-1}
-                      ref={confirmRef}
-                    >
-                      <div className="confirm-texts">
-                        <div id={`confirm-title-${encodeURIComponent(entry.id)}`} className="small">
-                          Remove this emoji?
-                        </div>
-                        <div id={`confirm-desc-${encodeURIComponent(entry.id)}`} className="muted small">
-                          This action takes effect immediately for all viewers.
-                        </div>
-                      </div>
-                      <div className="confirm-actions">
-                        <button
-                          className="btn"
-                          onClick={() => setConfirmTarget(null)}
-                          disabled={busy}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          className="btn danger"
-                          onClick={() => onRemove(entry)}
-                          disabled={busy}
-                        >
-                          {busy ? 'Removing…' : 'Confirm remove'}
-                        </button>
-                      </div>
-                    </div>
-                  )
-                ) : (
-                  <div className="emoji-actions">
-                    <button className="btn" disabled aria-label="Removal not supported for image emojis yet">
-                      Remove
-                    </button>
-                  </div>
-                )}
+                <div className="emoji-actions">
+                  <button
+                    className="btn danger"
+                    onClick={() => openConfirmFor(entry)}
+                    disabled={busy || uploadBusy}
+                  >
+                    Remove
+                  </button>
+                </div>
               </article>
             );
           })
         )}
       </div>
+
+      {/* Confirmation Modal */}
+      {modalOpen && confirmEntry ? (
+        <div
+          className="modal-overlay"
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !busy) {
+              setModalOpen(false);
+              setConfirmEntry(null);
+            }
+          }}
+        >
+          <div
+            className="modal"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="remove-emoji-title"
+            aria-describedby="remove-emoji-desc"
+          >
+            <div className="modal-header">
+              <h3 id="remove-emoji-title" className="modal-title">Remove this emoji?</h3>
+              <p id="remove-emoji-desc" className="muted small">
+                {confirmEntry.kind === 'text'
+                  ? `You are about to remove the emoji ${confirmEntry.char}. This action takes effect immediately for all viewers.`
+                  : `You are about to remove the ${confirmEntry.emojiType || 'custom'} image emoji. This action takes effect immediately for all viewers.`}
+              </p>
+            </div>
+
+            <div className="modal-preview">
+              <div className="emoji-icon" aria-hidden="true">
+                {confirmEntry.kind === 'text' ? (
+                  <span className="emoji">{confirmEntry.char}</span>
+                ) : (
+                  <img
+                    src={confirmEntry.imageUrl}
+                    alt={confirmEntry.emojiType ? `${confirmEntry.emojiType} emoji` : 'Uploaded emoji'}
+                    style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }}
+                  />
+                )}
+              </div>
+              <span className="emoji-char" aria-hidden="true" style={{ marginLeft: 8 }}>
+                {confirmEntry.kind === 'text' ? confirmEntry.char : (confirmEntry.emojiType || 'custom')}
+              </span>
+            </div>
+
+            <div className="modal-actions">
+              <button
+                ref={confirmCancelRef}
+                className="btn"
+                onClick={() => {
+                  if (busy) return;
+                  setModalOpen(false);
+                  setConfirmEntry(null);
+                }}
+                disabled={busy}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn danger"
+                onClick={onConfirmRemove}
+                disabled={busy}
+              >
+                {busy ? 'Removing…' : 'Confirm remove'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
