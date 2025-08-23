@@ -32,7 +32,7 @@ export default function AnalyticsPanel() {
 
   return (
     <div>
-      <h2 className="panel-title">Global Emotion Analytics</h2>
+      <h2 className="panel-title">Analytics Overview</h2>
       <div className="stats" aria-live="polite">
         {stats.map(s => (
           <StatBar key={s.label} label={s.label} red={s.teamRed} blue={s.teamBlue} />

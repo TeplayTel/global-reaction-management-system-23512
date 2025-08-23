@@ -8,34 +8,22 @@ import EmojiManager from './components/EmojiManager';
 // PUBLIC_INTERFACE
 export default function App() {
   /** Admin dashboard app entrypoint without authentication. Renders the dashboard with analytics and emoji management. */
-  const [theme, setTheme] = useState('dark');
   const [panel, setPanel] = useState('emojis'); // 'analytics' | 'emojis'
 
+  // Force light theme for this professional redesign
   useEffect(() => {
-    const storedTheme = (localStorage.getItem('admin_theme') || process.env.REACT_APP_THEME || 'dark');
-    setTheme(storedTheme);
+    document.documentElement.setAttribute('data-theme', 'light');
   }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('admin_theme', theme);
-  }, [theme]);
-
-  // PUBLIC_INTERFACE
-  const toggleTheme = () => {
-    /** Toggle between dark and light themes for the admin dashboard. */
-    setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
-  };
 
   return (
     <div className="page">
-      <Header onToggleTheme={toggleTheme} theme={theme} />
+      <Header />
       <main className="main" role="main">
         {/* Single main card spanning full content area with segmented control */}
         <section
           className="card"
           aria-label="Admin dashboard"
-          style={{ gridColumn: '1 / -1' }} // ensure full-width within existing grid layout
+          style={{ gridColumn: '1 / -1' }}
         >
           <div className="panel-header">
             <SegmentedControl
@@ -46,7 +34,6 @@ export default function App() {
               value={panel}
               onChange={setPanel}
             />
-            <span className="small muted" aria-hidden="true">v0.1</span>
           </div>
 
           {panel === 'analytics' ? <AnalyticsPanel /> : <EmojiManager />}

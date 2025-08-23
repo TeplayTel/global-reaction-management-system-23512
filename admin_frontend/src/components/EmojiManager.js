@@ -26,8 +26,8 @@ export default function EmojiManager() {
   const confirmCancelRef = useRef(null);
 
   // Upload form state
-  const [uploadType, setUploadType] = useState('');
-  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadType, setUploadType] = useState(''); // new: type/category label
+  const [uploadFile, setUploadFile] = useState(null); // new: image file
 
   // Normalize API/mocked list into unified objects
   const normalizeList = (rawList) => {
@@ -162,7 +162,7 @@ export default function EmojiManager() {
     e.preventDefault();
     setError('');
     if (!uploadType.trim()) {
-      setError('Please enter a type name for the emoji (e.g., "fire").');
+      setError('Please enter a type/label for the emoji (e.g., "fire").');
       return;
     }
     if (!uploadFile) {
@@ -177,7 +177,7 @@ export default function EmojiManager() {
       // Reset form
       setUploadType('');
       setUploadFile(null);
-      // Reset file input value in DOM if needed
+      // Best effort to clear file input
       if (e.target && e.target.reset) e.target.reset();
     } catch (err) {
       setError(err?.message || 'Unable to upload emoji image.');
@@ -220,25 +220,16 @@ export default function EmojiManager() {
 
   return (
     <div className="emoji-manager">
-      <h2 className="panel-title">Emoji Management</h2>
-
-      <p className="muted small" id="emoji-manager-helper">
-        Manage the set of emojis that viewers can use live. Add Unicode emojis or upload image-based emojis.
-        Removing an emoji hides it immediately for all viewers.
-      </p>
+      <h2 className="panel-title">Emojis</h2>
 
       {/* Add section */}
       <section
         className="add-card"
         aria-labelledby="add-emoji-title"
-        aria-describedby="add-emoji-desc"
       >
         <div className="add-card__header">
           <div>
-            <h3 id="add-emoji-title" className="add-card__title">Add new emoji</h3>
-            <p id="add-emoji-desc" className="muted small">
-              Paste any Unicode emoji (e.g., 🔥) or upload a custom image emoji.
-            </p>
+            <h3 id="add-emoji-title" className="add-card__title">Add emoji</h3>
           </div>
         </div>
         {/* Add Unicode emoji */}
@@ -260,23 +251,23 @@ export default function EmojiManager() {
 
         {/* Upload image emoji */}
         <form className="form-inline" onSubmit={onUpload} style={{ marginTop: 8 }}>
-          <label htmlFor="emoji-type" className="sr-only">Emoji type</label>
+          <label htmlFor="emoji-type" className="sr-only">Emoji Type (label/category)</label>
           <input
             id="emoji-type"
             className="input"
-            placeholder="Type (e.g., fire, clap)"
+            placeholder="Emoji Type (e.g., fire, clap, star)"
             value={uploadType}
             onChange={(e) => setUploadType(e.target.value)}
             aria-label="Emoji type"
             disabled={busy || uploadBusy}
             style={{ flex: 0.6 }}
           />
-          <label htmlFor="emoji-file" className="sr-only">Emoji image</label>
+          <label htmlFor="emoji-file" className="sr-only">Emoji Image Upload</label>
           <input
             id="emoji-file"
             type="file"
             accept="image/*"
-            aria-label="Emoji image file"
+            aria-label="Emoji image upload"
             onChange={(e) => setUploadFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
             disabled={busy || uploadBusy}
             style={{ color: 'var(--text-secondary)' }}
@@ -285,10 +276,6 @@ export default function EmojiManager() {
             {uploadBusy ? 'Uploading…' : 'Upload image'}
           </button>
         </form>
-
-        <p className="small muted" style={{ marginTop: 6 }}>
-          Note: Set REACT_APP_ADMIN_TOKEN in .env for Authorization to the upload API.
-        </p>
       </section>
 
       {error ? (
