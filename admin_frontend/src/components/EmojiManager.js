@@ -26,8 +26,8 @@ export default function EmojiManager() {
   const confirmCancelRef = useRef(null);
 
   // Upload form state
-  const [uploadType, setUploadType] = useState('');
-  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadType, setUploadType] = useState(''); // new: type/category label
+  const [uploadFile, setUploadFile] = useState(null); // new: image file
 
   // Normalize API/mocked list into unified objects
   const normalizeList = (rawList) => {
@@ -162,7 +162,7 @@ export default function EmojiManager() {
     e.preventDefault();
     setError('');
     if (!uploadType.trim()) {
-      setError('Please enter a type name for the emoji (e.g., "fire").');
+      setError('Please enter a type/label for the emoji (e.g., "fire").');
       return;
     }
     if (!uploadFile) {
@@ -177,7 +177,7 @@ export default function EmojiManager() {
       // Reset form
       setUploadType('');
       setUploadFile(null);
-      // Reset file input value in DOM if needed
+      // Best effort to clear file input
       if (e.target && e.target.reset) e.target.reset();
     } catch (err) {
       setError(err?.message || 'Unable to upload emoji image.');
@@ -251,23 +251,23 @@ export default function EmojiManager() {
 
         {/* Upload image emoji */}
         <form className="form-inline" onSubmit={onUpload} style={{ marginTop: 8 }}>
-          <label htmlFor="emoji-type" className="sr-only">Emoji type</label>
+          <label htmlFor="emoji-type" className="sr-only">Emoji Type (label/category)</label>
           <input
             id="emoji-type"
             className="input"
-            placeholder="Type (e.g., fire, clap)"
+            placeholder="Emoji Type (e.g., fire, clap, star)"
             value={uploadType}
             onChange={(e) => setUploadType(e.target.value)}
             aria-label="Emoji type"
             disabled={busy || uploadBusy}
             style={{ flex: 0.6 }}
           />
-          <label htmlFor="emoji-file" className="sr-only">Emoji image</label>
+          <label htmlFor="emoji-file" className="sr-only">Emoji Image Upload</label>
           <input
             id="emoji-file"
             type="file"
             accept="image/*"
-            aria-label="Emoji image file"
+            aria-label="Emoji image upload"
             onChange={(e) => setUploadFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
             disabled={busy || uploadBusy}
             style={{ color: 'var(--text-secondary)' }}
