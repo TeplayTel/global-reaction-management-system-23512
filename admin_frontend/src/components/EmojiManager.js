@@ -220,25 +220,16 @@ export default function EmojiManager() {
 
   return (
     <div className="emoji-manager">
-      <h2 className="panel-title">Emoji Management</h2>
-
-      <p className="muted small" id="emoji-manager-helper">
-        Manage the set of emojis that viewers can use live. Add Unicode emojis or upload image-based emojis.
-        Removing an emoji hides it immediately for all viewers.
-      </p>
+      <h2 className="panel-title">Emojis</h2>
 
       {/* Add section */}
       <section
         className="add-card"
         aria-labelledby="add-emoji-title"
-        aria-describedby="add-emoji-desc"
       >
         <div className="add-card__header">
           <div>
-            <h3 id="add-emoji-title" className="add-card__title">Add new emoji</h3>
-            <p id="add-emoji-desc" className="muted small">
-              Paste any Unicode emoji (e.g., 🔥) or upload a custom image emoji.
-            </p>
+            <h3 id="add-emoji-title" className="add-card__title">Add emoji</h3>
           </div>
         </div>
         {/* Add Unicode emoji */}
@@ -285,10 +276,6 @@ export default function EmojiManager() {
             {uploadBusy ? 'Uploading…' : 'Upload image'}
           </button>
         </form>
-
-        <p className="small muted" style={{ marginTop: 6 }}>
-          Note: Set REACT_APP_ADMIN_TOKEN in .env for Authorization to the upload API.
-        </p>
       </section>
 
       {error ? (
