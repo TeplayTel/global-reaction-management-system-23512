@@ -286,11 +286,21 @@ export default function EmojiManager() {
 
             {/* Single upload section with live preview */}
             <div className="modal-preview">
-              <div className="emoji-icon" aria-hidden="true">
+              <div className={`preview-box ${uploadFile ? 'has-image' : 'is-empty'}`} aria-hidden={!!uploadFile}>
                 {uploadFile ? (
-                  <img src={URL.createObjectURL(uploadFile)} alt="Preview" style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover' }} />
+                  <img
+                    src={URL.createObjectURL(uploadFile)}
+                    alt="Preview"
+                    className="preview-img"
+                  />
                 ) : (
-                  <span className="muted small">No image chosen</span>
+                  <div className="preview-placeholder" aria-hidden="true">
+                    <div className="preview-placeholder__icon">🖼️</div>
+                    <div className="preview-placeholder__text">
+                      <strong>Image preview</strong>
+                      <span className="small muted">Select a file to see it here</span>
+                    </div>
+                  </div>
                 )}
               </div>
               <div className="small muted">Live Preview</div>
