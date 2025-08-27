@@ -104,33 +104,87 @@ export async function getAnalytics(params = {}) {
   return [];
 }
 
+/**
+ * Internal helper to apply a timeout to fetch to avoid "stuck/pending" requests in dev.
+ * @param {RequestInfo} url
+ * @param {RequestInit} options
+ * @param {number} ms timeout in milliseconds
+ */
+async function fetchWithTimeout(url, options, ms = 20000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), ms);
+  try {
+    const resp = await fetch(url, { ...options, signal: controller.signal });
+    return resp;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 // PUBLIC_INTERFACE
 export async function uploadEmojiImage(emojiType, emojiImageFile) {
   /**
    * Upload a new image-based emoji using multipart/form-data.
    * Fields: emojiType, emojiImage
    * Endpoint: POST /fan-engagement/emoji/v1/upload
+   *
+   * Notes:
+   * - Do NOT set Content-Type manually for multipart; let the browser set boundary.
+   * - Include Authorization if token present.
+   * - Add Accept: application/json to help some backends choose response serializer.
+   * - Apply a fetch timeout to surface hanging-dev-server issues.
    */
   if (!emojiType) throw new Error('emojiType is required.');
   if (!emojiImageFile) throw new Error('emojiImage (file) is required.');
 
   const fd = new FormData();
   fd.append('emojiType', emojiType);
-  fd.append('emojiImage', emojiImageFile);
+  // If backend expects a filename field, pass through the original name
+  fd.append('emojiImage', emojiImageFile, emojiImageFile.name || 'emoji.png');
 
+  // Build headers; do not set Content-Type explicitly for FormData
   const headers = {
     ...authHeaders(),
-    // Let browser set multipart boundary
+    Accept: 'application/json',
   };
 
-  const r = await fetch(`${BASE_URL}/fan-engagement/emoji/v1/upload`, {
-    method: 'POST',
-    headers,
-    body: fd,
-  });
-  if (!r.ok) throw new Error(`Request failed: ${r.status}`);
-  const data = await r.json().catch(() => ({}));
-  return data;
+  let r;
+  try {
+    r = await fetchWithTimeout(`${BASE_URL}/fan-engagement/emoji/v1/upload`, {
+      method: 'POST',
+      headers,
+      body: fd,
+      // credentials omitted by default; if BE needs cookies, set credentials:'include'
+    }, 25000);
+  } catch (e) {
+    if (e?.name === 'AbortError') {
+      throw new Error('Upload timed out. Please check backend availability and CORS.');
+    }
+    throw e;
+  }
+
+  // Try to parse error body for more helpful messages
+  if (!r.ok) {
+    const ct = r.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      const errJson = await r.json().catch(() => ({}));
+      const message = errJson?.message || errJson?.error || `Request failed: ${r.status}`;
+      throw new Error(message);
+    } else {
+      const txt = await r.text().catch(() => '');
+      const message = txt || `Request failed: ${r.status}`;
+      throw new Error(message);
+    }
+  }
+
+  // Success path
+  const contentType = r.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    const data = await r.json().catch(() => ({}));
+    return data;
+  }
+  // If BE returns no content or other type, return basic ack
+  return { ok: true, status: r.status };
 }
 
 async function safeFetch(url, options) {

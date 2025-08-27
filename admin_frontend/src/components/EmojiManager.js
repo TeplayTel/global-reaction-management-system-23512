@@ -113,11 +113,17 @@ export default function EmojiManager() {
       if (!uploadFile) throw new Error('Please choose an image to upload.');
       setUploadBusy(true);
       await uploadEmojiImage(uploadName.trim(), uploadFile);
-      await load(); // reflect server state
+      await load(); // reflect server state asap
+      // Clear fields for next use and give instant success feedback
+      setUploadName('');
+      setUploadFile(null);
+      // Close modal after state is ready
       setModalOpen(false);
     } catch (err) {
+      // Show meaningful error to the user
       setError(err?.message || 'Unable to save emoji.');
     } finally {
+      // Ensure flags are always reset to avoid stuck buttons
       setBusy(false);
       setUploadBusy(false);
     }
