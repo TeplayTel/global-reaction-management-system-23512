@@ -3,9 +3,8 @@ import { getEmojis, removeEmoji, uploadEmojiImage, removeEmojiImage } from '../s
 
 /**
  * PUBLIC_INTERFACE
- * EmojiManager presents a simplified Emoji Management UI: no pagination, no status tabs,
- * improved search field visuals, better spaced buttons, and a simplified Add Emoji flow
- * with a single upload section and a name field.
+ * EmojiManager presents a simplified Emoji Management UI with refined card visuals.
+ * Edit functionality is removed; each card shows a single emoji with its actual name.
  * @returns {JSX.Element}
  */
 export default function EmojiManager() {
@@ -32,11 +31,12 @@ export default function EmojiManager() {
     const out = [];
     (raw || []).forEach((item) => {
       if (typeof item === 'string') {
+        // Single native emoji only
         out.push({
           id: `text:${item}`,
           kind: 'text',
           char: item,
-          name: item,
+          name: item,        // show actual emoji char as name by default
           category: 'General',
         });
       } else if (item && typeof item === 'object') {
@@ -45,7 +45,7 @@ export default function EmojiManager() {
           id,
           kind: 'image',
           char: null,
-          name: item.emojiType || 'custom',
+          name: item.emojiType || 'custom', // display actual emoji name/type, no generic "general"
           category: 'Uploaded',
           ...item,
         });
@@ -79,7 +79,7 @@ export default function EmojiManager() {
       const normalized = normalizeList(list);
       setEmojis(normalized);
       ensureCounts(normalized);
-    } catch (e) {
+    } catch {
       // handled by service
     }
   };
@@ -96,6 +96,7 @@ export default function EmojiManager() {
     if (!q) return emojis;
     return emojis.filter((e) => {
       const label = e.kind === 'text' ? e.char : (e.emojiType || e.emojiId || 'image');
+      // ensure name is part of search terms
       return `${label} ${e.name || ''} ${e.category || ''}`.toLowerCase().includes(q);
     });
   }, [emojis, search]);
@@ -132,14 +133,12 @@ export default function EmojiManager() {
     }
   };
 
-  // Remove entry
+  // Remove entry (kept per requirements; edit functionality removed)
   const onRemove = async (entry) => {
     setError('');
     setBusy(true);
     try {
       if (entry.kind === 'text') {
-        // Removing native string emoji
-        // Keep native removal to allow cleaning up mock items
         const { removeEmoji: removeTextEmoji } = await import('../services/api');
         const updated = await removeTextEmoji(entry.char);
         const normalized = normalizeList(updated);
@@ -206,7 +205,6 @@ export default function EmojiManager() {
                 }}
               />
             </div>
-            {/* View toggle and tabs removed per simplified spec */}
           </div>
         </div>
 
@@ -228,52 +226,46 @@ export default function EmojiManager() {
             </div>
           ) : (
             filtered.map((entry) => {
-              // Status chips retained for visual consistency, but no status filtering tabs
-              const active = true;
               const usage = counts[entry.id] || 0;
-              const statusClass = active ? 'approved' : 'pending';
-              const statusLabel = active ? 'ACTIVE' : 'INACTIVE';
+              // Always show a single emoji in the preview box
               return (
                 <article key={entry.id} className="emoji-card" role="gridcell" aria-label={entry.name || entry.id}>
                   <div className="emoji-card__row" style={{justifyContent:'center', position:'relative'}}>
-                    <div className="emoji-icon" aria-hidden="true">
+                    <div className="emoji-icon" aria-hidden="true" title={entry.name}>
                       {entry.kind === 'text' ? (
                         <span className="emoji" aria-hidden="true">{entry.char}</span>
                       ) : (
                         <img
                           src={entry.imageUrl}
                           alt={entry.emojiType ? `${entry.emojiType} emoji` : 'Uploaded emoji'}
-                          style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }}
+                          style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover' }}
                         />
                       )}
                     </div>
-                    <span className={`status chip ${statusClass}`} style={{ position: 'absolute', right: 0, top: 0 }}>
-                      {statusLabel}
-                    </span>
+                    {/* Subtle status pill removed for cleaner UI per refinement; can re-add if needed */}
                   </div>
 
                   <div className="center">
-                    <div className="emoji-title" style={{justifyContent:'center'}}>
-                      <span className="emoji-label">{entry.name || (entry.kind === 'text' ? entry.char : (entry.emojiType || 'custom'))}</span>
-                    </div>
+                    {/* Display precise emoji name, not a generic label */}
+                    <div className="emoji-name">{entry.name}</div>
                     <div className="small muted">{entry.category || (entry.kind === 'text' ? 'General' : 'Uploaded')}</div>
                   </div>
 
                   <div className="emoji-footer" style={{ gap: '10px' }}>
-                    <span className="emoji-char" aria-hidden="true" title="Usage count">{Intl.NumberFormat().format(usage)} uses</span>
+                    <span className="emoji-char" aria-hidden="true" title="Usage count">
+                      {Intl.NumberFormat().format(usage)} uses
+                    </span>
                     <div className="spacer" />
-                    <div className="emoji-actions" role="group" aria-label="Card actions" style={{ display: 'inline-flex', gap: '8px' }}>
-                      <button className="btn" title="Edit" disabled={true} style={{ opacity: 0.6, cursor: 'not-allowed' }}>Edit</button>
-                      <button
-                        className="btn danger"
-                        title="Delete"
-                        onClick={() => onRemove(entry)}
-                        disabled={busy || uploadBusy}
-                        style={{ marginLeft: '4px' }}
-                      >
-                        Delete
-                      </button>
-                    </div>
+                    {/* Edit removed entirely as requested */}
+                    <button
+                      className="btn danger"
+                      title="Delete"
+                      onClick={() => onRemove(entry)}
+                      disabled={busy || uploadBusy}
+                      aria-label={`Delete ${entry.name}`}
+                    >
+                      Delete
+                    </button>
                   </div>
                 </article>
               );
@@ -299,7 +291,7 @@ export default function EmojiManager() {
             <div className="modal-preview">
               <div className="emoji-icon" aria-hidden="true">
                 {uploadFile ? (
-                  <img src={URL.createObjectURL(uploadFile)} alt="Preview" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }} />
+                  <img src={URL.createObjectURL(uploadFile)} alt="Preview" style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover' }} />
                 ) : (
                   <span className="muted small">No image chosen</span>
                 )}
