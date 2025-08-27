@@ -6,13 +6,13 @@ import React from 'react';
  */
 export default function Header() {
   return (
-    <header className="header" role="banner" style={{ background: 'rgba(2,6,23,0.6)', borderBottom: '1px solid var(--stroke-soft)', backdropFilter: 'saturate(120%) blur(10px)' }}>
+    <header className="header" role="banner">
       <div className="row">
         <div className="left">
-          <h1 aria-label="Application title" style={{ color: 'var(--text-primary)' }}>Admin Dashboard</h1>
+          <h1 aria-label="Application title">Admin Dashboard</h1>
         </div>
         <div className="right">
-          <div className="avatar" aria-label="Account avatar" style={{ background: 'var(--bg-elev-2)', color: 'var(--text-secondary)', borderColor: 'var(--stroke-soft)' }}>
+          <div className="avatar" aria-label="Account avatar">
             <span className="small" aria-hidden="true">A</span>
           </div>
         </div>
