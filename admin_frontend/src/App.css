@@ -1,47 +1,44 @@
 :root {
   /* Canvas and elevations - LIGHT THEME */
-  --bg-canvas: #F7F9FC;
+  --bg-canvas: #F5F7FB;
+  --bg-canvas-2: #EEF3F9;
   --bg-elev-1: #FFFFFF;
-  --bg-elev-2: #FAFBFD;
+  --bg-elev-2: #FAFBFE;
   --overlay-veil: rgba(10, 20, 40, 0.35);
 
   /* Borders / Dividers */
-  --stroke-soft: #E5EAF1;
-  --stroke-strong: #CBD5E1;
+  --stroke-soft: #E6EAF2;
+  --stroke-strong: #D8DFEA;
 
   /* Text */
-  --text-primary: #0F172A;   /* slate-900 */
-  --text-secondary: #475569; /* slate-600 */
-  --text-muted: #64748B;     /* slate-500 */
+  --text-primary: #0B1220;
+  --text-secondary: #5B6472;
+  --text-muted: #8C95A4;
   --text-inverse: #FFFFFF;
 
   /* Brand / Accent */
-  --accent: #2563EB;          /* blue-600 */
-  --accent-hover: #1D4ED8;    /* blue-700 */
+  --accent: #2563EB;
+  --accent-hover: #1E4ED8;
   --accent-contrast: #FFFFFF;
 
-  /* App brand colors */
-  --color-primary: #1976d2;
-  --color-secondary: #64748B;
-
   /* Status */
-  --success: #16A34A; /* green-600 */
-  --warning: #F59E0B; /* amber-500 */
-  --danger: #DC2626;  /* red-600 */
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
 
   /* Teams (analytics) */
   --team-red: #EF4444;
   --team-blue: #3B82F6;
 
   /* Controls / chips */
-  --chip-bg: #EEF2F7;
+  --chip-bg: #F1F5F9;
   --chip-text: #334155;
 
   /* Focus */
   --focus-ring: rgba(37, 99, 235, 0.35);
 
   /* Metrics */
-  --radius-card: 14px;
+  --radius-card: 12px;
   --radius-control: 10px;
   --radius-pill: 9999px;
 
@@ -58,7 +55,7 @@
 
 html, body, #root {
   height: 100%;
-  background: var(--bg-canvas);
+  background: linear-gradient(180deg, var(--bg-canvas), var(--bg-canvas-2));
   color: var(--text-primary);
 }
 
@@ -70,7 +67,7 @@ html, body, #root {
 
 .page {
   min-height: 100dvh;
-  background: var(--bg-canvas);
+  background: linear-gradient(180deg, var(--bg-canvas), var(--bg-canvas-2));
   color: var(--text-primary);
 }
 
@@ -214,7 +211,7 @@ html, body, #root {
   border: 1px solid var(--stroke-soft);
   border-radius: var(--radius-card);
   padding: 16px;
-  box-shadow: 0 8px 20px rgba(2, 6, 23, 0.06);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(0,0,0,0.04);
 }
 
 /* Panel header & segmented control */
@@ -303,7 +300,102 @@ html, body, #root {
   transition: width 300ms ease-out;
 }
 
-/* Emoji Manager */
+/* Emoji Manager — Extended UI (analytics FE parity) */
+
+/* Page header for Emoji section */
+.page-header { padding: 12px 0 0 0; }
+.page-header__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-l);
+}
+.page-header__left { display: flex; align-items: center; gap: 12px; }
+.icon-chip {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: grid; place-items: center;
+  background: #F1E9FE; /* accent-purple-100 vibe */
+  border: 1px solid var(--stroke-soft);
+  font-size: 18px;
+}
+.h1 { font-size: 24px; font-weight: 700; margin: 0; color: var(--text-primary); letter-spacing: -0.2px; }
+.subtitle { margin: 2px 0 0; font-size: 14px; color: var(--text-secondary); }
+
+.page-header__right { display: flex; align-items: center; gap: 12px; }
+.btn.ghost {
+  background: transparent;
+  border-color: var(--stroke-soft);
+}
+.btn.ghost:hover { background: var(--bg-elev-2); }
+.chev { margin-left: 6px; opacity: 0.8; }
+
+.divider { height: 1px; background: var(--stroke-soft); margin-top: 16px; }
+
+/* KPI grid */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  padding: 16px 0;
+}
+.kpi-card {
+  background: var(--bg-elev-1);
+  border: 1px solid var(--stroke-soft);
+  border-radius: var(--radius-card);
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(0,0,0,0.04);
+}
+.kpi-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.kpi-center { position: relative; display: inline-grid; place-items: center; margin: 10px 0; }
+.kpi-number {
+  position: absolute; font-size: 24px; font-weight: 700; color: var(--text-primary);
+}
+.kpi-caption { font-size: 12px; color: var(--text-muted); }
+
+/* Library header/tools */
+.library-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 10px;
+}
+.library-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.search { position: relative; }
+.search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); opacity: 0.7; }
+.search-input { padding-left: 32px; height: 40px; }
+
+.view-toggle {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  background: var(--chip-bg);
+  border: 1px solid var(--stroke-soft);
+  border-radius: 12px;
+}
+.view-toggle .icon-btn[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.18);
+}
+
+/* Tabs */
+.tabs { display: flex; gap: 8px; margin: 6px 0 12px 0; flex-wrap: wrap; }
+.tab-pill {
+  height: 32px; padding: 0 12px; border-radius: 9999px;
+  border: 1px solid var(--stroke-soft);
+  background: var(--chip-bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), box-shadow var(--transition);
+}
+.tab-pill.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.18);
+}
+
+/* Add section */
 .add-card {
   margin-top: 10px;
   background: var(--bg-elev-2);
@@ -334,41 +426,39 @@ html, body, #root {
   font-weight: 600;
 }
 
+/* Emoji library cards */
 .emoji-grid {
   margin-top: 14px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
 }
-
 .emoji-card {
-  background: linear-gradient(180deg, rgba(37, 99, 235, 0.04), rgba(37, 99, 235, 0.0));
+  background: var(--bg-elev-1);
   border: 1px solid var(--stroke-soft);
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 12px;
-  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.06);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(0,0,0,0.04);
   display: flex;
   flex-direction: column;
   gap: 10px;
-  transition: transform var(--transition), border-color var(--transition), background var(--transition);
+  transition: transform var(--transition), border-color var(--transition), background var(--transition), box-shadow var(--transition);
 }
 .emoji-card:hover {
   transform: translateY(-2px);
   border-color: var(--stroke-strong);
-  background: linear-gradient(180deg, rgba(37,99,235,0.06), rgba(37,99,235,0.0));
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(0,0,0,0.04);
 }
-
 .emoji-card__row {
   display: flex;
   align-items: center;
   gap: 12px;
 }
-
 .emoji-icon {
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   border-radius: 12px;
-  background: radial-gradient(120px 120px at 20% 20%, rgba(37,99,235,0.10), rgba(37,99,235,0.04) 60%, transparent 100%), var(--bg-elev-1);
+  background: radial-gradient(120px 120px at 20% 20%, rgba(37,99,235,0.08), rgba(37,99,235,0.04) 60%, transparent 100%), var(--bg-elev-1);
   border: 1px solid var(--stroke-soft);
   display: inline-flex;
   align-items: center;
@@ -379,6 +469,7 @@ html, body, #root {
   font-size: 28px;
   line-height: 1;
 }
+.emoji-name { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-top: 6px; }
 
 .emoji-meta { min-width: 0; }
 .emoji-title {
@@ -420,13 +511,27 @@ html, body, #root {
   transition: width 280ms ease-out;
 }
 
-.emoji-actions {
+/* Footer on card */
+.emoji-footer {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 8px;
 }
 
+/* Status chips */
+.status.chip {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: 9999px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+}
+.status.approved { background: #E9FBEF; color: #166534; border-color: #BBF7D0; }
+.status.pending { background: #FFF1E8; color: #9A3412; border-color: #FED7AA; }
+.status.rejected { background: #FDECEC; color: #991B1B; border-color: #FECACA; }
+
+/* Empty state */
 .empty-state {
   grid-column: 1 / -1;
   display: grid;
@@ -451,7 +556,7 @@ html, body, #root {
 .input {
   flex: 1;
   min-width: 0;
-  height: 36px;
+  height: 40px;
   border-radius: var(--radius-control);
   border: 1px solid var(--stroke-soft);
   background: var(--bg-elev-1);
