@@ -295,11 +295,7 @@ export default function EmojiManager() {
                   />
                 ) : (
                   <div className="preview-placeholder" aria-hidden="true">
-                    <div className="preview-placeholder__icon">🖼️</div>
-                    <div className="preview-placeholder__text">
-                      <strong>Image preview</strong>
-                      <span className="small muted">Select a file to see it here</span>
-                    </div>
+                    <div className="preview-placeholder__icon" title="Preview icon">🖼️</div>
                   </div>
                 )}
               </div>

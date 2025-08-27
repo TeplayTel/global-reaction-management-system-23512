@@ -679,27 +679,27 @@ html, body, #root {
 .preview-placeholder {
   display: grid;
   place-items: center;
-  gap: 6px;
   text-align: center;
-  padding: 6px;
+  padding: 0;
   color: var(--text-secondary);
 }
 
+/* Icon-only placeholder aligned with analytics style (tinted chip, subtle border) */
 .preview-placeholder__icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
-  background: #EEF2FF;
+  background: #EEF2FF; /* soft indigo tint */
   border: 1px solid var(--stroke-soft);
-  font-size: 16px;
+  font-size: 18px;
+  box-shadow: 0 1px 0 rgba(15,23,42,0.03);
 }
 
+/* Remove text; keep class for backward compatibility if referenced elsewhere */
 .preview-placeholder__text {
-  display: grid;
-  gap: 2px;
-  line-height: 1.2;
+  display: none;
 }
 
 .preview-img {
