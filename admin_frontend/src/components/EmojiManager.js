@@ -171,9 +171,6 @@ export default function EmojiManager() {
             </div>
           </div>
           <div className="page-header__right" style={{ gap: '12px' }}>
-            <button className="btn ghost" type="button" aria-label="Filters">
-              Filters <span className="chev" aria-hidden="true">›</span>
-            </button>
             <button className="btn primary" type="button" onClick={openAdd} style={{ marginLeft: '4px' }}>
               <span aria-hidden="true" style={{fontWeight:700, marginRight:6}}>+</span>
               Add Emoji
@@ -311,14 +308,30 @@ export default function EmojiManager() {
                 />
               </div>
 
-              <div className="form-inline" style={{ alignItems: 'center' }}>
-                <label htmlFor="emoji-file" className="sr-only">Image file</label>
-                <input
-                  id="emoji-file"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e)=>setUploadFile(e.target.files?.[0] || null)}
-                />
+              {/* File upload control styled to avoid native "No file chosen" overlap */}
+              <div className="upload-row">
+                <div className="upload-drop" role="group" aria-label="Upload emoji image">
+                  <div className="upload-left">
+                    <div className="upload-icon" aria-hidden="true">🖼️</div>
+                    <div className="upload-text">
+                      <div className="upload-title">Upload image</div>
+                      <div className="upload-subtitle">PNG/SVG recommended 128×128</div>
+                    </div>
+                  </div>
+                  <div className="upload-right">
+                    <label htmlFor="emoji-file" className="btn">Choose file</label>
+                    <input
+                      id="emoji-file"
+                      type="file"
+                      accept="image/*"
+                      className="upload-input"
+                      onChange={(e)=>setUploadFile(e.target.files?.[0] || null)}
+                    />
+                    <div className="upload-filename small muted" aria-live="polite">
+                      {uploadFile ? uploadFile.name : 'No image selected'}
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {error ? <p className="small" role="alert" style={{ color: 'var(--danger)' }}>{error}</p> : null}
