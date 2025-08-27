@@ -527,8 +527,8 @@ html, body, #root {
   padding: 4px 10px;
   border: 1px solid transparent;
 }
-.status.approved { background: #E9FBEF; color: #166534; border-color: #BBF7D0; }
-.status.pending { background: #FFF1E8; color: #9A3412; border-color: #FED7AA; }
+.status.approved { background: #E9FBEF; color: #166534; border-color: #BBF7D0; } /* Active */
+.status.pending { background: #EEF2F7; color: #475569; border-color: #E2E8F0; }   /* Inactive neutral */
 .status.rejected { background: #FDECEC; color: #991B1B; border-color: #FECACA; }
 
 /* Empty state */
