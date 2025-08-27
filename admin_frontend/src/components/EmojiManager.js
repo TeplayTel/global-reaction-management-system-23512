@@ -319,7 +319,14 @@ export default function EmojiManager() {
                     </div>
                   </div>
                   <div className="upload-right">
-                    <label htmlFor="emoji-file" className="btn">Choose file</label>
+                    <label
+                      htmlFor="emoji-file"
+                      className="upload-choose-btn"
+                      role="button"
+                      aria-label="Choose an image file to upload"
+                    >
+                      Choose file
+                    </label>
                     <input
                       id="emoji-file"
                       type="file"
@@ -327,7 +334,10 @@ export default function EmojiManager() {
                       className="upload-input"
                       onChange={(e)=>setUploadFile(e.target.files?.[0] || null)}
                     />
-                    <div className="upload-filename small muted" aria-live="polite">
+                    <div
+                      className={`upload-filename small ${uploadFile ? '' : 'is-placeholder'}`}
+                      aria-live="polite"
+                    >
                       {uploadFile ? uploadFile.name : 'No image selected'}
                     </div>
                   </div>
