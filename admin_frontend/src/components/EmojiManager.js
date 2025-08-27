@@ -145,8 +145,9 @@ export default function EmojiManager() {
         setEmojis(normalized);
         ensureCounts(normalized);
       } else {
-        const key = entry.emojiId || entry.imageUrl || entry.id;
-        const updated = await removeEmojiImage(key);
+        // Prefer stable identifiers: emojiId, then emojiType, then fallback to id
+        const identifier = entry.emojiId || entry.emojiType || entry.id;
+        const updated = await removeEmojiImage(identifier);
         const normalized = normalizeList(updated);
         setEmojis(normalized);
         ensureCounts(normalized);
@@ -233,7 +234,7 @@ export default function EmojiManager() {
                         <span className="emoji" aria-hidden="true">{entry.char}</span>
                       ) : (
                         <img
-                          src={entry.imageUrl}
+                          src={entry.imageUrl || `${process.env.REACT_APP_API_BASE_URL || ''}/emoji/${encodeURIComponent(entry.emojiType || '')}.png`}
                           alt={entry.emojiType ? `${entry.emojiType} emoji` : 'Uploaded emoji'}
                           style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover' }}
                         />
@@ -244,7 +245,7 @@ export default function EmojiManager() {
 
                   <div className="center">
                     {/* Display precise emoji name, not a generic label */}
-                    <div className="emoji-name">{entry.name}</div>
+                    <div className="emoji-name">{entry.emojiType || entry.name}</div>
                     <div className="small muted">{entry.category || (entry.kind === 'text' ? 'General' : 'Uploaded')}</div>
                   </div>
 

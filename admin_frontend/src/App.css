@@ -1,24 +1,24 @@
 :root {
-  /* Canvas and elevations - LIGHT THEME */
-  --bg-canvas: #F5F7FB;
-  --bg-canvas-2: #EEF3F9;
-  --bg-elev-1: #FFFFFF;
-  --bg-elev-2: #FAFBFE;
-  --overlay-veil: rgba(10, 20, 40, 0.35);
+  /* Dark, modern theme defaults */
+  --bg-canvas: #0F172A;        /* slate-900 */
+  --bg-canvas-2: #0B1220;      /* deeper slate */
+  --bg-elev-1: #121A2A;        /* card surface */
+  --bg-elev-2: #0E1525;        /* slightly darker */
+  --overlay-veil: rgba(2, 6, 23, 0.5);
 
   /* Borders / Dividers */
-  --stroke-soft: #E6EAF2;
-  --stroke-strong: #D8DFEA;
+  --stroke-soft: rgba(255,255,255,0.08);
+  --stroke-strong: rgba(255,255,255,0.14);
 
   /* Text */
-  --text-primary: #0B1220;
-  --text-secondary: #5B6472;
-  --text-muted: #8C95A4;
-  --text-inverse: #FFFFFF;
+  --text-primary: #E5E7EB;     /* gray-200 */
+  --text-secondary: rgba(229,231,235,0.75);
+  --text-muted: rgba(229,231,235,0.55);
+  --text-inverse: #0B1220;
 
   /* Brand / Accent */
-  --accent: #2563EB;
-  --accent-hover: #1E4ED8;
+  --accent: #3B82F6;           /* blue-500 */
+  --accent-hover: #2563EB;     /* blue-600 */
   --accent-contrast: #FFFFFF;
 
   /* Status */
@@ -27,15 +27,15 @@
   --danger: #EF4444;
 
   /* Teams (analytics) */
-  --team-red: #EF4444;
-  --team-blue: #3B82F6;
+  --team-red: #F87171;
+  --team-blue: #60A5FA;
 
   /* Controls / chips */
-  --chip-bg: #F1F5F9;
-  --chip-text: #334155;
+  --chip-bg: rgba(148,163,184,0.12); /* slate tint */
+  --chip-text: #CBD5E1;
 
   /* Focus */
-  --focus-ring: rgba(37, 99, 235, 0.35);
+  --focus-ring: rgba(59,130,246,0.35);
 
   /* Metrics */
   --radius-card: 12px;
@@ -76,7 +76,7 @@ html, body, #root {
   position: sticky;
   top: 0;
   z-index: 40;
-  background: rgba(255,255,255,0.75);
+  background: rgba(2,6,23,0.6);
   backdrop-filter: saturate(120%) blur(8px);
   border-bottom: 1px solid var(--stroke-soft);
   padding: 12px 24px;

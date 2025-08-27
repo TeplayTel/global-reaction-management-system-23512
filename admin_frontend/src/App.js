@@ -10,9 +10,9 @@ export default function App() {
   /** Admin dashboard app entrypoint without authentication. Renders the dashboard with analytics and emoji management. */
   const [panel, setPanel] = useState('emojis'); // 'analytics' | 'emojis'
 
-  // Force light theme for this professional redesign
+  // Apply dark theme
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', 'light');
+    document.documentElement.setAttribute('data-theme', 'dark');
   }, []);
 
   return (

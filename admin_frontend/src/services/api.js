@@ -5,6 +5,16 @@
 
 const BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
 const IS_MOCK = !BASE_URL;
+const AUTH_TOKEN = process.env.REACT_APP_ADMIN_TOKEN || '';
+
+/**
+ * Build Authorization headers if token exists.
+ */
+function authHeaders() {
+  const headers = {};
+  if (AUTH_TOKEN) headers['Authorization'] = `Bearer ${AUTH_TOKEN}`;
+  return headers;
+}
 
 // PUBLIC_INTERFACE
 export async function getEmojis() {
@@ -12,6 +22,12 @@ export async function getEmojis() {
    * Returns a heterogeneous list that can contain:
    * - plain Unicode emoji strings
    * - uploaded image emoji objects: { emojiId, emojiType, imageUrl }
+   *
+   * Backend integration expectations:
+   * - A list endpoint is expected at GET {BASE_URL}/fan-engagement/emoji/v1/list
+   *   returning: [{ emojiId, emojiType }, ...]
+   * - Each image can be resolved to an image URL via:
+   *   {BASE_URL}/emoji/{emojiType}.png
    */
   if (IS_MOCK) {
     // Merge text and image-based emojis for the mock
@@ -20,20 +36,45 @@ export async function getEmojis() {
       ...mockState.emojiImages.map(obj => ({ ...obj })),
     ];
   }
-  const res = await safeFetch(`${BASE_URL}/emojis`);
-  return res;
+
+  // Try to fetch structured list
+  try {
+    const list = await safeFetch(`${BASE_URL}/fan-engagement/emoji/v1/list`, {
+      headers: {
+        ...authHeaders(),
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // Map to include imageUrl per provided pattern
+    const mapped = (Array.isArray(list) ? list : []).map(it => {
+      const emojiType = it.emojiType || it.type || it.name;
+      const imageUrl = `${BASE_URL}/emoji/${encodeURIComponent(emojiType)}.png`;
+      return {
+        emojiId: it.emojiId || it.id || emojiType,
+        emojiType,
+        imageUrl,
+      };
+    });
+    return mapped;
+  } catch (e) {
+    // As a fallback, attempt a generic endpoint if available
+    const res = await safeFetch(`${BASE_URL}/emojis`, {
+      headers: { ...authHeaders() },
+    });
+    return Array.isArray(res) ? res : [];
+  }
 }
 
 // PUBLIC_INTERFACE
 export async function addEmoji(emoji) {
-  /** Add a new emoji to the list. */
+  /** Add a new native (unicode) emoji to the list (mock only unless backend supports). */
   if (IS_MOCK) {
     if (!emoji) throw new Error('Emoji is required.');
     if (!mockState.emojis.includes(emoji)) {
       mockState.emojis.push(emoji);
       notify();
     }
-    // Return combined for consistency with getEmojis
     return [
       ...mockState.emojis.slice(),
       ...mockState.emojiImages.map(obj => ({ ...obj })),
@@ -41,17 +82,15 @@ export async function addEmoji(emoji) {
   }
   const res = await safeFetch(`${BASE_URL}/emojis`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ emoji }),
   });
   return res;
 }
 
- // PUBLIC_INTERFACE
+// PUBLIC_INTERFACE
 export async function removeEmoji(emoji) {
-  /** Remove a Unicode emoji from the list.
-   * Note: Removing uploaded image emojis is not implemented in the mock.
-   */
+  /** Remove a native Unicode emoji (mock or generic backend). */
   if (IS_MOCK) {
     mockState.emojis = mockState.emojis.filter(e => e !== emoji);
     notify();
@@ -62,41 +101,22 @@ export async function removeEmoji(emoji) {
   }
   const res = await safeFetch(`${BASE_URL}/emojis/${encodeURIComponent(emoji)}`, {
     method: 'DELETE',
+    headers: { ...authHeaders() },
   });
   return res;
 }
 
 // PUBLIC_INTERFACE
-export async function removeEmojiImage(emojiIdOrUrl) {
+export async function removeEmojiImage(identifier) {
   /** Remove an uploaded image-based emoji from the list.
-   * When BASE_URL is not set (mock mode), this removes from in-memory store by matching:
-   * - emojiId OR
-   * - imageUrl OR
-   * - a composed id in the form "type:<emojiType>:<imageUrl>"
-   * Returns the unified list combining text and image emojis, for consistency with getEmojis().
+   * identifier: emojiId or emojiType
    */
-  if (!emojiIdOrUrl) throw new Error('emojiIdOrUrl is required.');
+  if (!identifier) throw new Error('emoji identifier is required.');
   if (IS_MOCK) {
-    const input = String(emojiIdOrUrl);
-    let targetUrl = null;
-    let targetId = null;
-    if (input.startsWith('type:')) {
-      // Extract the URL part after the last colon
-      const lastColon = input.lastIndexOf(':');
-      if (lastColon > -1) {
-        targetUrl = input.slice(lastColon + 1);
-      }
-    } else if (input.startsWith('http://') || input.startsWith('https://') || input.startsWith('blob:')) {
-      targetUrl = input;
-    } else {
-      targetId = input;
-    }
-
-    mockState.emojiImages = mockState.emojiImages.filter(obj => {
-      if (targetId && obj.emojiId === targetId) return false;
-      if (targetUrl && obj.imageUrl === targetUrl) return false;
-      return true;
-    });
+    const input = String(identifier);
+    mockState.emojiImages = mockState.emojiImages.filter(
+      obj => obj.emojiId !== input && obj.emojiType !== input && obj.imageUrl !== input
+    );
     notify();
     return [
       ...mockState.emojis.slice(),
@@ -104,38 +124,66 @@ export async function removeEmojiImage(emojiIdOrUrl) {
     ];
   }
 
-  // Best-effort backend endpoint guess; adjust according to backend API spec when available.
-  const res = await safeFetch(`${BASE_URL}/fan-engagement/emoji/v1/${encodeURIComponent(emojiIdOrUrl)}`, {
+  // Prefer deleting by emojiId if provided; otherwise try by type
+  const url = `${BASE_URL}/fan-engagement/emoji/v1/${encodeURIComponent(identifier)}`;
+  const res = await safeFetch(url, {
     method: 'DELETE',
+    headers: { ...authHeaders() },
   });
   return res;
 }
 
 // PUBLIC_INTERFACE
-export async function getAnalytics() {
-  /** Fetch analytics data. */
+export async function getAnalytics(params = {}) {
+  /** Fetch analytics data.
+   * Integrates with /fan-engagement/emoji/v1/stats
+   * Accepts optional query params: eventId, userId, pageNo, pageSize
+   * Returns normalized array of { label, teamRed, teamBlue }
+   */
   if (IS_MOCK) {
     // randomize a bit to simulate "live" analytics
     return mockState.stats.map(s => randomizeStat(s));
   }
-  const res = await safeFetch(`${BASE_URL}/analytics/global`);
-  return res;
+
+  const qp = new URLSearchParams();
+  ['eventId', 'userId', 'pageNo', 'pageSize'].forEach(k => {
+    if (params[k] != null && params[k] !== '') qp.set(k, String(params[k]));
+  });
+  const url = `${BASE_URL}/fan-engagement/emoji/v1/stats${qp.toString() ? `?${qp.toString()}` : ''}`;
+
+  const data = await safeFetch(url, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+  });
+
+  // Normalize expected structure
+  if (Array.isArray(data)) {
+    return data.map(item => ({
+      label: item.label || item.metric || 'Metric',
+      teamRed: Number(item.teamRed ?? item.red ?? 0),
+      teamBlue: Number(item.teamBlue ?? item.blue ?? 0),
+    }));
+  }
+  if (data && typeof data === 'object' && Array.isArray(data.items)) {
+    return data.items.map(item => ({
+      label: item.label || item.metric || 'Metric',
+      teamRed: Number(item.teamRed ?? item.red ?? 0),
+      teamBlue: Number(item.teamBlue ?? item.blue ?? 0),
+    }));
+  }
+  return [];
 }
 
 // PUBLIC_INTERFACE
 export async function uploadEmojiImage(emojiType, emojiImageFile) {
   /** Upload a new image-based emoji using multipart/form-data.
-   * Expects:
-   * - emojiType: string (e.g., "fire")
-   * - emojiImageFile: File (image/*)
-   * When BASE_URL is not set (mock mode), the image is stored in memory
-   * and an object URL is generated for preview.
+   * Fields: emojiType, emojiImage
+   * Endpoint: POST /fan-engagement/emoji/v1/upload
    */
   if (!emojiType) throw new Error('emojiType is required.');
   if (!emojiImageFile) throw new Error('emojiImage (file) is required.');
 
   if (IS_MOCK) {
-    // Create a mock emoji object and add to mock state
     const id = `EMJ${Math.floor(100 + Math.random() * 900)}`;
     const imageUrl = URL.createObjectURL(emojiImageFile);
     const newObj = { emojiId: id, emojiType, imageUrl };
@@ -152,12 +200,10 @@ export async function uploadEmojiImage(emojiType, emojiImageFile) {
   fd.append('emojiType', emojiType);
   fd.append('emojiImage', emojiImageFile);
 
-  const headers = {};
-  // Do NOT set Content-Type explicitly so the browser sets boundary correctly.
-  const adminToken = process.env.REACT_APP_ADMIN_TOKEN;
-  if (adminToken) {
-    headers['Authorization'] = `Bearer ${adminToken}`;
-  }
+  const headers = {
+    ...authHeaders(),
+    // Do not set Content-Type so browser sets boundary automatically
+  };
 
   try {
     const r = await fetch(`${BASE_URL}/fan-engagement/emoji/v1/upload`, {
@@ -178,15 +224,15 @@ async function safeFetch(url, options) {
   try {
     const r = await fetch(url, options);
     if (!r.ok) throw new Error(`Request failed: ${r.status}`);
-    const data = await r.json().catch(() => ({}));
-    return data;
-  } catch (err) {
-    console.warn('API error, falling back if possible:', err?.message || err);
-    if (IS_MOCK) {
-      // Mock already handled by callers
-      throw err;
+    const contentType = r.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = await r.json().catch(() => ({}));
+      return data;
     }
-    // Re-throw so UI can handle
+    // Fallback for plain responses
+    return await r.json().catch(() => ({}));
+  } catch (err) {
+    console.warn('API error:', err?.message || err);
     throw err;
   }
 }
@@ -214,5 +260,4 @@ function randomizeStat(s) {
 
 function notify() {
   // Placeholder for websocket/event notifications integration
-  // In real integration, this should trigger updates across clients.
 }
