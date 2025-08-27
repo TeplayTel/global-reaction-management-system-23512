@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { getEmojis, removeEmoji, uploadEmojiImage, removeEmojiImage } from '../services/api';
+import { getEmojis, uploadEmojiImage, removeEmojiImage } from '../services/api';
 
 /**
  * PUBLIC_INTERFACE
- * EmojiManager presents a simplified Emoji Management UI with refined card visuals.
- * Edit functionality is removed; each card shows a single emoji with its actual name.
+ * EmojiManager renders emoji items loaded dynamically from the backend.
+ * The UI reflects add/remove operations by refetching from the API.
  * @returns {JSX.Element}
  */
 export default function EmojiManager() {
@@ -23,29 +23,19 @@ export default function EmojiManager() {
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadBusy, setUploadBusy] = useState(false);
 
-  // Simple usage counts for visual parity in cards
+  // Usage counts (cosmetic only)
   const [counts, setCounts] = useState({});
 
-  // Normalize mixed list into consistent structure
+  // Normalize API list into consistent structure (image-based only)
   const normalizeList = (raw) => {
     const out = [];
     (raw || []).forEach((item) => {
-      if (typeof item === 'string') {
-        // Single native emoji only
-        out.push({
-          id: `text:${item}`,
-          kind: 'text',
-          char: item,
-          name: item,        // show actual emoji char as name by default
-          category: 'General',
-        });
-      } else if (item && typeof item === 'object') {
-        const id = item.emojiId || `type:${item.emojiType || 'unknown'}:${item.imageUrl || Math.random()}`;
+      if (item && typeof item === 'object') {
+        const id = item.emojiId || item.emojiType || item.imageUrl || Math.random().toString(36).slice(2);
         out.push({
           id,
           kind: 'image',
-          char: null,
-          name: item.emojiType || 'custom', // display actual emoji name/type, no generic "general"
+          name: item.emojiType || 'custom',
           category: 'Uploaded',
           ...item,
         });
@@ -55,7 +45,7 @@ export default function EmojiManager() {
   };
 
   const seedCount = (entry) => {
-    const src = entry.kind === 'text' ? entry.char : (entry.emojiType || entry.id || 'x');
+    const src = entry.emojiType || entry.id || 'x';
     const base = Array.from(String(src)).reduce((a, c) => a + (c.codePointAt(0) || 0), 0);
     return 50 + (base % 950); // 50..999
   };
@@ -75,12 +65,13 @@ export default function EmojiManager() {
 
   const load = async () => {
     try {
+      setError('');
       const list = await getEmojis();
       const normalized = normalizeList(list);
       setEmojis(normalized);
       ensureCounts(normalized);
-    } catch {
-      // handled by service
+    } catch (err) {
+      setError('Unable to load emojis.');
     }
   };
 
@@ -95,8 +86,7 @@ export default function EmojiManager() {
     const q = search.trim().toLowerCase();
     if (!q) return emojis;
     return emojis.filter((e) => {
-      const label = e.kind === 'text' ? e.char : (e.emojiType || e.emojiId || 'image');
-      // ensure name is part of search terms
+      const label = e.emojiType || e.emojiId || 'image';
       return `${label} ${e.name || ''} ${e.category || ''}`.toLowerCase().includes(q);
     });
   }, [emojis, search]);
@@ -123,7 +113,7 @@ export default function EmojiManager() {
       if (!uploadFile) throw new Error('Please choose an image to upload.');
       setUploadBusy(true);
       await uploadEmojiImage(uploadName.trim(), uploadFile);
-      await load();
+      await load(); // reflect server state
       setModalOpen(false);
     } catch (err) {
       setError(err?.message || 'Unable to save emoji.');
@@ -133,25 +123,14 @@ export default function EmojiManager() {
     }
   };
 
-  // Remove entry (kept per requirements; edit functionality removed)
+  // Remove entry
   const onRemove = async (entry) => {
     setError('');
     setBusy(true);
     try {
-      if (entry.kind === 'text') {
-        const { removeEmoji: removeTextEmoji } = await import('../services/api');
-        const updated = await removeTextEmoji(entry.char);
-        const normalized = normalizeList(updated);
-        setEmojis(normalized);
-        ensureCounts(normalized);
-      } else {
-        // Prefer stable identifiers: emojiId, then emojiType, then fallback to id
-        const identifier = entry.emojiId || entry.emojiType || entry.id;
-        const updated = await removeEmojiImage(identifier);
-        const normalized = normalizeList(updated);
-        setEmojis(normalized);
-        ensureCounts(normalized);
-      }
+      const identifier = entry.emojiId || entry.emojiType || entry.id;
+      await removeEmojiImage(identifier);
+      await load(); // reflect server state
     } catch (err) {
       setError(err?.message || 'Unable to delete emoji.');
     } finally {
@@ -225,28 +204,21 @@ export default function EmojiManager() {
           ) : (
             filtered.map((entry) => {
               const usage = counts[entry.id] || 0;
-              // Always show a single emoji in the preview box
               return (
                 <article key={entry.id} className="emoji-card" role="gridcell" aria-label={entry.name || entry.id}>
                   <div className="emoji-card__row" style={{justifyContent:'center', position:'relative'}}>
                     <div className="emoji-icon" aria-hidden="true" title={entry.name}>
-                      {entry.kind === 'text' ? (
-                        <span className="emoji" aria-hidden="true">{entry.char}</span>
-                      ) : (
-                        <img
-                          src={entry.imageUrl || `${process.env.REACT_APP_API_BASE_URL || ''}/emoji/${encodeURIComponent(entry.emojiType || '')}.png`}
-                          alt={entry.emojiType ? `${entry.emojiType} emoji` : 'Uploaded emoji'}
-                          style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover' }}
-                        />
-                      )}
+                      <img
+                        src={entry.imageUrl || `${process.env.REACT_APP_API_BASE_URL || ''}/emoji/${encodeURIComponent(entry.emojiType || '')}.png`}
+                        alt={entry.emojiType ? `${entry.emojiType} emoji` : 'Uploaded emoji'}
+                        style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover' }}
+                      />
                     </div>
-                    {/* Subtle status pill removed for cleaner UI per refinement; can re-add if needed */}
                   </div>
 
                   <div className="center">
-                    {/* Display precise emoji name, not a generic label */}
                     <div className="emoji-name">{entry.emojiType || entry.name}</div>
-                    <div className="small muted">{entry.category || (entry.kind === 'text' ? 'General' : 'Uploaded')}</div>
+                    <div className="small muted">{entry.category || 'Uploaded'}</div>
                   </div>
 
                   <div className="emoji-footer" style={{ gap: '10px' }}>
@@ -254,7 +226,6 @@ export default function EmojiManager() {
                       {Intl.NumberFormat().format(usage)} uses
                     </span>
                     <div className="spacer" />
-                    {/* Edit removed entirely as requested */}
                     <button
                       className="btn danger"
                       title="Delete"
@@ -315,7 +286,7 @@ export default function EmojiManager() {
                 />
               </div>
 
-              {/* File upload control styled to avoid native "No file chosen" overlap */}
+              {/* File upload control */}
               <div className="upload-row">
                 <div className="upload-drop" role="group" aria-label="Upload emoji image">
                   <div className="upload-left">
