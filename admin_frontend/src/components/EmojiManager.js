@@ -1,47 +1,31 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { addEmoji, getEmojis, removeEmoji, uploadEmojiImage, removeEmojiImage } from '../services/api';
+import { getEmojis, removeEmoji, uploadEmojiImage, removeEmojiImage } from '../services/api';
 
 /**
  * PUBLIC_INTERFACE
- * EmojiManager renders the refined Emoji Management UI per latest design notes and style guide.
- * Only required features are included: header actions, library grid with inline card actions,
- * simple tabs, add/upload modal, and a basic pagination/status row. Bulk mode, advanced insights,
- * and list view are intentionally omitted per current scope.
+ * EmojiManager presents a simplified Emoji Management UI: no pagination, no status tabs,
+ * improved search field visuals, better spaced buttons, and a simplified Add Emoji flow
+ * with a single upload section and a name field.
  * @returns {JSX.Element}
  */
 export default function EmojiManager() {
   // State
   const [emojis, setEmojis] = useState([]);
   const [search, setSearch] = useState('');
-  const [tab, setTab] = useState('all'); // all | active | inactive
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  // Add/Edit modal state (single modal used for both create and simple edit)
+  // Add modal state
   const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState(null); // null => add mode; otherwise holds entry
   const cancelBtnRef = useRef(null);
 
-  // Modal form fields
-  const [mode, setMode] = useState('native'); // 'native' | 'upload'
-  const [emojiChar, setEmojiChar] = useState('');
-  const [emojiName, setEmojiName] = useState('');
-  const [emojiCategory, setEmojiCategory] = useState('');
-  const [emojiStatus, setEmojiStatus] = useState(true); // active true/false
-  const [emojiTags, setEmojiTags] = useState('');
-  const [uploadType, setUploadType] = useState('');
+  // Modal fields (Upload + Name only)
+  const [uploadName, setUploadName] = useState('');
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadBusy, setUploadBusy] = useState(false);
 
   // Simple usage counts for visual parity in cards
   const [counts, setCounts] = useState({});
-
-  // MOCK active/inactive status map derived deterministically from id
-  const isActive = (e) => {
-    const key = e.id || e.char || e.emojiId || 'k';
-    const sum = Array.from(String(key)).reduce((a, c) => a + (c.codePointAt(0) || 0), 0);
-    return (sum % 4) !== 0; // ~75% active
-  };
 
   // Normalize mixed list into consistent structure
   const normalizeList = (raw) => {
@@ -96,7 +80,7 @@ export default function EmojiManager() {
       setEmojis(normalized);
       ensureCounts(normalized);
     } catch (e) {
-      // handled by service; optionally reflect error
+      // handled by service
     }
   };
 
@@ -106,58 +90,19 @@ export default function EmojiManager() {
     return () => clearInterval(t);
   }, []);
 
-  // Filtering (status + search)
+  // Simplified filtering: search only
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    if (!q) return emojis;
     return emojis.filter((e) => {
-      const active = isActive(e);
-      if (tab === 'active' && !active) return false;
-      if (tab === 'inactive' && active) return false;
-      if (!q) return true;
       const label = e.kind === 'text' ? e.char : (e.emojiType || e.emojiId || 'image');
       return `${label} ${e.name || ''} ${e.category || ''}`.toLowerCase().includes(q);
     });
-  }, [emojis, search, tab]);
-
-  // Pagination (simple, client-side)
-  const [page, setPage] = useState(1);
-  const [rows, setRows] = useState(12);
-  const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / rows));
-  const pageItems = useMemo(() => {
-    const start = (page - 1) * rows;
-    return filtered.slice(start, start + rows);
-  }, [filtered, page, rows]);
-
-  useEffect(() => {
-    // Reset to first page when filter/search changes
-    setPage(1);
-  }, [search, tab, rows]);
+  }, [emojis, search]);
 
   // Modal helpers
   const openAdd = () => {
-    setEditing(null);
-    setMode('native');
-    setEmojiChar('');
-    setEmojiName('');
-    setEmojiCategory('');
-    setEmojiTags('');
-    setEmojiStatus(true);
-    setUploadType('');
-    setUploadFile(null);
-    setModalOpen(true);
-    setTimeout(() => cancelBtnRef.current?.focus(), 0);
-  };
-
-  const openEdit = (entry) => {
-    setEditing(entry);
-    setMode(entry.kind === 'text' ? 'native' : 'upload');
-    setEmojiChar(entry.kind === 'text' ? entry.char : '');
-    setEmojiName(entry.name || (entry.kind === 'text' ? entry.char : (entry.emojiType || 'custom')));
-    setEmojiCategory(entry.category || (entry.kind === 'text' ? 'General' : 'Uploaded'));
-    setEmojiTags('');
-    setEmojiStatus(isActive(entry));
-    setUploadType(entry.emojiType || '');
+    setUploadName('');
     setUploadFile(null);
     setModalOpen(true);
     setTimeout(() => cancelBtnRef.current?.focus(), 0);
@@ -166,38 +111,19 @@ export default function EmojiManager() {
   const closeModal = () => {
     if (busy || uploadBusy) return;
     setModalOpen(false);
-    setEditing(null);
   };
 
-  // Save handler for modal (create or simple edit)
+  // Save handler (Upload only with Name)
   const onSave = async (e) => {
     e.preventDefault();
     setError('');
     try {
-      if (!editing) {
-        // Add flow
-        if (mode === 'native') {
-          const v = emojiChar.trim();
-          if (!v) throw new Error('Please pick or enter an emoji.');
-          setBusy(true);
-          const updated = await addEmoji(v);
-          const normalized = normalizeList(updated);
-          setEmojis(normalized);
-          ensureCounts(normalized);
-        } else {
-          if (!uploadType.trim()) throw new Error('Please set a name/type for the emoji.');
-          if (!uploadFile) throw new Error('Please choose an image to upload.');
-          setUploadBusy(true);
-          await uploadEmojiImage(uploadType.trim(), uploadFile);
-          await load();
-        }
-      } else {
-        // Simple edit: client-side only (name/category/tags/status). No backend in mock.
-        const next = emojis.map((e) => (e.id === editing.id ? { ...e, name: emojiName || e.name, category: emojiCategory || e.category } : e));
-        setEmojis(next);
-      }
+      if (!uploadName.trim()) throw new Error('Please enter a name for the emoji.');
+      if (!uploadFile) throw new Error('Please choose an image to upload.');
+      setUploadBusy(true);
+      await uploadEmojiImage(uploadName.trim(), uploadFile);
+      await load();
       setModalOpen(false);
-      setEditing(null);
     } catch (err) {
       setError(err?.message || 'Unable to save emoji.');
     } finally {
@@ -212,7 +138,10 @@ export default function EmojiManager() {
     setBusy(true);
     try {
       if (entry.kind === 'text') {
-        const updated = await removeEmoji(entry.char);
+        // Removing native string emoji
+        // Keep native removal to allow cleaning up mock items
+        const { removeEmoji: removeTextEmoji } = await import('../services/api');
+        const updated = await removeTextEmoji(entry.char);
         const normalized = normalizeList(updated);
         setEmojis(normalized);
         ensureCounts(normalized);
@@ -230,18 +159,6 @@ export default function EmojiManager() {
     }
   };
 
-  // KPI basics (Active vs Inactive)
-  const kpi = useMemo(() => {
-    let active = 0;
-    let inactive = 0;
-    emojis.forEach((e) => (isActive(e) ? active++ : inactive++));
-    return {
-      total: emojis.length,
-      active,
-      inactive,
-    };
-  }, [emojis]);
-
   return (
     <div className="emoji-manager">
       {/* Page header */}
@@ -251,14 +168,14 @@ export default function EmojiManager() {
             <div className="icon-chip" aria-hidden="true">😊</div>
             <div className="titles">
               <h2 className="h1">Emoji Management</h2>
-              <p className="subtitle">Manage library, categories, and availability</p>
+              <p className="subtitle">Manage library and uploads</p>
             </div>
           </div>
-          <div className="page-header__right">
+          <div className="page-header__right" style={{ gap: '12px' }}>
             <button className="btn ghost" type="button" aria-label="Filters">
               Filters <span className="chev" aria-hidden="true">›</span>
             </button>
-            <button className="btn primary" type="button" onClick={openAdd}>
+            <button className="btn primary" type="button" onClick={openAdd} style={{ marginLeft: '4px' }}>
               <span aria-hidden="true" style={{fontWeight:700, marginRight:6}}>+</span>
               Add Emoji
             </button>
@@ -267,19 +184,12 @@ export default function EmojiManager() {
         <div className="divider" />
       </section>
 
-      {/* KPI row */}
-      <section className="kpi-grid" aria-label="Emoji metrics">
-        <KpiCard title="Total Emojis" value={kpi.total} caption="All library items" ringColor="var(--accent)" />
-        <KpiCard title="Active" value={kpi.active} caption="Enabled for use" ringColor="var(--success)" />
-        <KpiCard title="Inactive" value={kpi.inactive} caption="Currently disabled" ringColor="var(--text-muted)" />
-      </section>
-
       {/* Library */}
       <section className="card" aria-label="Emoji library">
         <div className="library-header">
           <h3 className="panel-title" style={{margin:0}}>Emoji Library</h3>
-          <div className="library-tools">
-            <div className="search">
+          <div className="library-tools" style={{ gap: '12px', flexWrap: 'wrap' }}>
+            <div className="search" style={{ minWidth: 240 }}>
               <span className="search-icon" aria-hidden="true">🔎</span>
               <input
                 className="input search-input"
@@ -287,37 +197,17 @@ export default function EmojiManager() {
                 value={search}
                 onChange={(e)=>setSearch(e.target.value)}
                 aria-label="Search emojis"
+                style={{
+                  height: 40,
+                  paddingLeft: 36,
+                  background: '#F8FAFC',
+                  borderColor: 'var(--stroke-soft)',
+                  boxShadow: 'inset 0 1px 0 rgba(15,23,42,0.03)'
+                }}
               />
             </div>
-            <div className="view-toggle" role="tablist" aria-label="Status tabs">
-              {['all','active','inactive'].map((t)=>(
-                <button
-                  key={t}
-                  className="icon-btn"
-                  aria-selected={tab===t}
-                  title={t[0].toUpperCase()+t.slice(1)}
-                  onClick={()=>setTab(t)}
-                >
-                  {t === 'all' ? '≣' : (t === 'active' ? '✓' : '⏸')}
-                </button>
-              ))}
-            </div>
+            {/* View toggle and tabs removed per simplified spec */}
           </div>
-        </div>
-
-        {/* Tabs mimic */}
-        <div className="tabs" role="tablist" aria-label="Filter tabs">
-          {['all','active','inactive'].map(t => (
-            <button
-              key={t}
-              role="tab"
-              aria-selected={tab===t}
-              className={`tab-pill ${tab===t ? 'active' : ''}`}
-              onClick={()=>setTab(t)}
-            >
-              {t[0].toUpperCase() + t.slice(1)}
-            </button>
-          ))}
         </div>
 
         {error ? (
@@ -328,17 +218,18 @@ export default function EmojiManager() {
 
         {/* Grid */}
         <div className="emoji-grid" role="grid" aria-label="Emoji grid">
-          {pageItems.length === 0 ? (
+          {filtered.length === 0 ? (
             <div className="empty-state" role="note" aria-live="polite">
               <div className="empty-emoji" aria-hidden="true">🧩</div>
               <div className="empty-text">
                 <strong>No emojis found</strong>
-                <span className="muted small">Try adjusting your search or filters.</span>
+                <span className="muted small">Try adjusting your search.</span>
               </div>
             </div>
           ) : (
-            pageItems.map((entry) => {
-              const active = isActive(entry);
+            filtered.map((entry) => {
+              // Status chips retained for visual consistency, but no status filtering tabs
+              const active = true;
               const usage = counts[entry.id] || 0;
               const statusClass = active ? 'approved' : 'pending';
               const statusLabel = active ? 'ACTIVE' : 'INACTIVE';
@@ -368,16 +259,17 @@ export default function EmojiManager() {
                     <div className="small muted">{entry.category || (entry.kind === 'text' ? 'General' : 'Uploaded')}</div>
                   </div>
 
-                  <div className="emoji-footer">
+                  <div className="emoji-footer" style={{ gap: '10px' }}>
                     <span className="emoji-char" aria-hidden="true" title="Usage count">{Intl.NumberFormat().format(usage)} uses</span>
                     <div className="spacer" />
-                    <div className="emoji-actions" role="group" aria-label="Card actions">
-                      <button className="btn" title="Edit" onClick={() => openEdit(entry)} disabled={busy || uploadBusy}>Edit</button>
+                    <div className="emoji-actions" role="group" aria-label="Card actions" style={{ display: 'inline-flex', gap: '8px' }}>
+                      <button className="btn" title="Edit" disabled={true} style={{ opacity: 0.6, cursor: 'not-allowed' }}>Edit</button>
                       <button
                         className="btn danger"
                         title="Delete"
                         onClick={() => onRemove(entry)}
                         disabled={busy || uploadBusy}
+                        style={{ marginLeft: '4px' }}
                       >
                         Delete
                       </button>
@@ -388,31 +280,9 @@ export default function EmojiManager() {
             })
           )}
         </div>
-
-        {/* Pagination */}
-        <div className="library-header" style={{ marginTop: 12 }}>
-          <div className="muted small">
-            {total === 0 ? 'Showing 0 of 0' : `Showing ${(page - 1) * rows + 1}–${Math.min(page * rows, total)} of ${total}`}
-          </div>
-          <div className="library-tools">
-            <label className="small" htmlFor="rows">Rows per page</label>
-            <select
-              id="rows"
-              className="input"
-              value={rows}
-              onChange={(e)=>setRows(Number(e.target.value))}
-              style={{ width: 100, height: 32 }}
-            >
-              {[8,12,16,24].map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
-            <button className="btn" onClick={()=>setPage(Math.max(1, page-1))} disabled={page<=1} aria-label="Previous page">‹</button>
-            <div className="small" aria-live="polite">Page {page} of {totalPages}</div>
-            <button className="btn" onClick={()=>setPage(Math.min(totalPages, page+1))} disabled={page>=totalPages} aria-label="Next page">›</button>
-          </div>
-        </div>
       </section>
 
-      {/* Add/Edit Emoji Modal */}
+      {/* Add Emoji Modal (Upload + Name only) */}
       {modalOpen ? (
         <div
           className="modal-overlay"
@@ -421,69 +291,47 @@ export default function EmojiManager() {
         >
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="emoji-modal-title">
             <div className="modal-header">
-              <h3 id="emoji-modal-title" className="modal-title">{editing ? 'Edit Emoji' : 'Add Emoji'}</h3>
-              <p className="muted small">Provide details and preview before saving.</p>
+              <h3 id="emoji-modal-title" className="modal-title">Add Emoji</h3>
+              <p className="muted small">Upload an image and give it a name.</p>
             </div>
 
-            {/* Source toggle */}
-            <div className="segmented" role="tablist" aria-label="Emoji source">
-              {['native','upload'].map((m)=>(
-                <button key={m} role="tab" aria-selected={mode===m} onClick={()=>setMode(m)} className="small">
-                  {m === 'native' ? 'Native' : 'Upload'}
-                </button>
-              ))}
-            </div>
-
-            {/* Preview */}
+            {/* Single upload section with live preview */}
             <div className="modal-preview">
               <div className="emoji-icon" aria-hidden="true">
-                {mode === 'native' ? (
-                  <span className="emoji" style={{ fontSize: 28 }}>{emojiChar || '🙂'}</span>
+                {uploadFile ? (
+                  <img src={URL.createObjectURL(uploadFile)} alt="Preview" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }} />
                 ) : (
-                  uploadFile ? (
-                    <img src={URL.createObjectURL(uploadFile)} alt="Preview" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }} />
-                  ) : (
-                    <span className="muted small">No image chosen</span>
-                  )
+                  <span className="muted small">No image chosen</span>
                 )}
               </div>
               <div className="small muted">Live Preview</div>
             </div>
 
-            <form onSubmit={onSave} className="form">
-              {mode === 'native' ? (
-                <div className="form-inline" style={{ alignItems: 'stretch' }}>
-                  <label htmlFor="emoji-char" className="sr-only">Emoji</label>
-                  <input id="emoji-char" className="input" placeholder="Enter emoji (e.g., 🔥)" value={emojiChar} onChange={(e)=>setEmojiChar(e.target.value)} />
-                </div>
-              ) : (
-                <div className="form-inline" style={{ alignItems: 'stretch' }}>
-                  <label htmlFor="emoji-type" className="sr-only">Name/Type</label>
-                  <input id="emoji-type" className="input" placeholder="Name / Type (e.g., fire)" value={uploadType} onChange={(e)=>setUploadType(e.target.value)} style={{ flex: 0.6 }} />
-                  <label htmlFor="emoji-file" className="sr-only">Image file</label>
-                  <input id="emoji-file" type="file" accept="image/*" onChange={(e)=>setUploadFile(e.target.files?.[0] || null)} />
-                </div>
-              )}
-
+            <form onSubmit={onSave} className="form" style={{ display: 'grid', gap: 10 }}>
               <div className="form-inline" style={{ alignItems: 'stretch' }}>
                 <label htmlFor="emoji-name" className="sr-only">Name</label>
-                <input id="emoji-name" className="input" placeholder="Display name" value={emojiName} onChange={(e)=>setEmojiName(e.target.value)} />
-                <label htmlFor="emoji-category" className="sr-only">Category</label>
-                <input id="emoji-category" className="input" placeholder="Category" value={emojiCategory} onChange={(e)=>setEmojiCategory(e.target.value)} />
+                <input
+                  id="emoji-name"
+                  className="input"
+                  placeholder="Name (e.g., fire)"
+                  value={uploadName}
+                  onChange={(e)=>setUploadName(e.target.value)}
+                />
               </div>
 
               <div className="form-inline" style={{ alignItems: 'center' }}>
-                <label htmlFor="emoji-tags" className="sr-only">Tags</label>
-                <input id="emoji-tags" className="input" placeholder="Tags (comma-separated)" value={emojiTags} onChange={(e)=>setEmojiTags(e.target.value)} />
-                <label className="small" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  <input type="checkbox" checked={emojiStatus} onChange={(e)=>setEmojiStatus(e.target.checked)} />
-                  Active
-                </label>
+                <label htmlFor="emoji-file" className="sr-only">Image file</label>
+                <input
+                  id="emoji-file"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e)=>setUploadFile(e.target.files?.[0] || null)}
+                />
               </div>
 
               {error ? <p className="small" role="alert" style={{ color: 'var(--danger)' }}>{error}</p> : null}
 
-              <div className="modal-actions">
+              <div className="modal-actions" style={{ gap: '10px' }}>
                 <button ref={cancelBtnRef} type="button" className="btn" onClick={closeModal}>Cancel</button>
                 <button className="btn primary" type="submit" disabled={busy || uploadBusy}>
                   {(busy || uploadBusy) ? 'Saving…' : 'Save'}
@@ -493,23 +341,6 @@ export default function EmojiManager() {
           </div>
         </div>
       ) : null}
-    </div>
-  );
-}
-
-/** Small KPI ring card aligned with style guide */
-function KpiCard({ title, value, caption, ringColor }) {
-  return (
-    <div className="kpi-card">
-      <div className="kpi-title">{title}</div>
-      <div className="kpi-center">
-        <svg width="92" height="92" viewBox="0 0 92 92" aria-hidden="true">
-          <circle cx="46" cy="46" r="36" stroke="#EEF2F7" strokeWidth="8" fill="none" />
-          <circle cx="46" cy="46" r="36" stroke={ringColor} strokeWidth="8" fill="none" strokeLinecap="round" strokeDasharray="226" strokeDashoffset="60" />
-        </svg>
-        <div className="kpi-number">{value}</div>
-      </div>
-      <div className="kpi-caption">{caption}</div>
     </div>
   );
 }

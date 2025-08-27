@@ -360,8 +360,33 @@ html, body, #root {
 }
 .library-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .search { position: relative; }
-.search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); opacity: 0.7; }
-.search-input { padding-left: 32px; height: 40px; }
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); opacity: 0.7; pointer-events: none; }
+.search-input {
+  padding-left: 40px;
+  height: 40px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--stroke-soft);
+  background: #F8FAFC;
+  transition: box-shadow var(--transition), border-color var(--transition), background var(--transition);
+}
+.search-input:focus {
+  outline: none;
+  border-color: var(--stroke-strong);
+  background: #FFFFFF;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* Improve spacing between inline buttons in toolbars and card footers */
+.library-tools .btn,
+.library-tools .icon-btn {
+  margin-inline-start: 0;
+}
+.emoji-actions .btn + .btn {
+  margin-left: 8px;
+}
+.page-header__right .btn + .btn {
+  margin-left: 12px;
+}
 
 .view-toggle {
   display: inline-flex;
